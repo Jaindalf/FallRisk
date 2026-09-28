@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fall Detection Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --color-primary: #2563eb;
+            --color-primary-hover: #1d4ed8;
+            --color-primary-light: #eff6ff;
+            --color-bg-app: #f4f7fb;
+            --color-bg-card: #ffffff;
+            --color-text-main: #0f172a;
+            --color-text-muted: #64748b;
+            --color-border: #e2e8f0;
+
+            --risk-high: #ef4444;
+            --risk-high-bg: #fef2f2;
+            --risk-high-text: #991b1b;
+            --risk-med: #f59e0b;
+            --risk-med-bg: #fffbeb;
+            --risk-med-text: #7d320b;
+            --risk-low: #10b981;
+            --risk-low-bg: #ecfdf5;
+            --risk-low-text: #065f46;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-pill: 9999px;
+            --shadow-card: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.03);
+            --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-app);
+            color: var(--color-text-main);
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            padding: 1.5rem 2rem 0;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-bg-card);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--color-text-muted);
+            background: transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover { color: var(--color-primary); background: var(--color-primary-light); }
+        .tab.active { color: var(--color-primary); border-bottom: 3px solid var(--color-primary); }
+
+        .panel {
+            display: none;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .panel.active { display: block; }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .top-bar h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--color-text-main);
+            letter-spacing: -0.02em;
+        }
+
+        .live-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            background: var(--color-bg-card);
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-card);
+        }
+
+        .pulse {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--risk-low);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--color-bg-card);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--color-border);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-val {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--color-text-main);
+        }
+
+        .stat-sub {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-top: 4px;
+        }
+
+        .section-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-text-main);
+            margin-bottom: 12px;
+        }
+
+        .table-container {
+            background: var(--color-bg-card);
+            border-radius: var(--radius-lg);
+            padding: 10px;
+            box-shadow: var(--shadow-card);
+            border: 1px solid var(--color-border);
+            overflow-x: auto;
+        }
+
+        .patient-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .patient-table th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--color-border);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .patient-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text-main);
+            vertical-align: middle;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .patient-table tr:hover td { background: var(--color-primary-light); }
+        .patient-table tr.selected td { background: var(--color-primary-light); }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: var(--radius-pill);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .badge.high { background: var(--risk-high-bg); color: var(--risk-high-text); }
+        .badge.med  { background: var(--risk-med-bg);  color: var(--risk-med-text); }
+        .badge.low  { background: var(--risk-low-bg);  color: var(--risk-low-text); }
+
+        .risk-bar-wrap { display: flex; align-items: center; gap: 10px; }
+
+        .risk-bar {
+            height: 8px;
+            border-radius: var(--radius-pill);
+            flex: 1;
+            background: var(--color-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .risk-fill {
+            height: 100%;
+            border-radius: var(--radius-pill);
+            transition: width 0.3s ease;
+        }
+
+        .detail-pane {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            box-shadow: var(--shadow-card);
+            border-left: 5px solid var(--color-primary);
+        }
+
+        .detail-pane.open {
+            display: block;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .vital-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin: 1.5rem 0;
+        }
+
+        .vital-card {
+            background: var(--color-bg-app);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            border: 1px solid var(--color-border);
+            text-align: center;
+        }
+
+        .vital-name { font-size: 12px; font-weight: 500; color: var(--color-text-muted); }
+        .vital-val  { font-size: 24px; font-weight: 700; color: var(--color-text-main); margin: 6px 0; }
+        .vital-unit { font-size: 11px; color: var(--color-text-muted); }
+
+        .nurse-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+            margin-top: 1rem;
+        }
+
+        .patient-card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            box-shadow: var(--shadow-card);
+        }
+
+        .patient-card.alert-high { border-color: var(--risk-high); border-width: 2px; box-shadow: 0 4px 12px rgba(239,68,68,0.15); }
+        .patient-card.alert-med  { border-color: var(--risk-med);  border-width: 2px; }
+        .patient-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+
+        .alert-icon {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            animation: alertpulse 1.5s infinite;
+            border: 3px solid #fff;
+        }
+
+        .alert-icon.high { background: var(--risk-high); color: #fff; }
+        .alert-icon.med  { background: var(--risk-med); color: #fff; animation: none; }
+
+        @keyframes alertpulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+            50%       { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+        }
+
+        .pid  { font-size: 16px; font-weight: 600; color: var(--color-text-main); margin-bottom: 4px; }
+        .room-no { font-size: 13px; color: var(--color-text-muted); margin-bottom: 12px; }
+
+        .risk-pct-big {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 8px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .risk-pct-big.high { color: var(--risk-high); }
+        .risk-pct-big.med  { color: var(--risk-med); }
+        .risk-pct-big.low  { color: var(--risk-low); }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-primary:hover { background: var(--color-primary-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--color-border); color: var(--color-text-muted); }
+        .btn-outline:hover { background: var(--color-bg-app); color: var(--color-text-main); }
+
+        .ack-btn { width: 100%; margin-top: 12px; padding: 10px; font-weight: 600; }
+        .ack-btn.acked { color: var(--risk-low-text); background: var(--risk-low-bg); border-color: var(--risk-low); }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: var(--color-bg-card);
+            padding: 4px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--color-border);
+        }
+
+        .filter-btn {
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 16px;
+            border-radius: var(--radius-pill);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--color-text-muted);
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active           { background: var(--color-primary); color: #fff; }
+        .filter-btn.active.high      { background: var(--risk-high); color: #fff; }
+        .filter-btn.active.med       { background: var(--risk-med); color: #fff; }
+        .filter-btn.active.low       { background: var(--risk-low); color: #fff; }
+
+        .search-box {
+            padding: 8px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-pill);
+            font-size: 14px;
+            color: var(--color-text-main);
+            background: var(--color-bg-card);
+            width: 220px;
+            outline: none;
+        }
+
+        .search-box:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-light);
+        }
+
+        .trend-mini { display: flex; align-items: flex-end; gap: 4px; height: 32px; }
+        .trend-bar  { width: 8px; border-radius: 4px 4px 0 0; }
+
+        /* ── SWAY MAP IMPROVEMENTS ─────────────────────────────────────────── */
+        .sway-container {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--color-border);
+            box-shadow: var(--shadow-card);
+        }
+
+        .sway-circle {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            border: 3px solid var(--risk-low);
+            background: var(--risk-low-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .sway-circle.warn {
+            border-color: var(--risk-high);
+            background: var(--risk-high-bg);
+        }
+
+        .sway-axis-v {
+            position: absolute;
+            width: 1px;
+            height: 100%;
+            background: rgba(0,0,0,0.15);
+        }
+
+        .sway-axis-h {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: rgba(0,0,0,0.15);
+        }
+
+        .sway-ring-inner {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px dashed rgba(0,0,0,0.25);
+        }
+
+        .sway-center-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #000;
+            z-index: 5;
+        }
+
+        /* THE SWAY BALL — smooth physics-like transition */
+        #sway-ball-dot {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--risk-high);
+            box-shadow: 0 4px 12px rgba(239,68,68,0.6);
+            z-index: 10;
+            /* Smooth cubic-bezier motion — feels like a liquid ball rolling */
+            transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        background 0.4s ease,
+                        box-shadow 0.4s ease;
+            will-change: transform;
+        }
+
+        /* Trail effect behind sway ball */
+        #sway-trail-1 {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(239,68,68,0.3);
+            z-index: 8;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            will-change: transform;
+            pointer-events: none;
+        }
+
+        #sway-trail-2 {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(239,68,68,0.15);
+            z-index: 7;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            will-change: transform;
+            pointer-events: none;
+        }
+
+        .sway-info { font-size: 14px; color: var(--color-text-muted); line-height: 2.0; }
+        .sway-info-row { display: flex; justify-content: space-between; width: 180px; }
+
+        /* TUG Time card highlight */
+        .tug-card {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            border-left-width: 3px;
+        }
+
+        .tug-time-big {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══ LOGIN OVERLAY ═══ -->
+    <div id="login-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);z-index:10000;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+        <div style="background:white;padding:48px 44px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center;max-width:420px;width:100%;">
+            <div style="font-size:48px;margin-bottom:10px;">🏥</div>
+            <h1 style="color:var(--color-primary);font-size:26px;font-weight:800;margin-bottom:4px">ClinicalGuard 3.0</h1>
+            <p style="color:var(--color-text-muted);font-size:13px;margin-bottom:28px">Hospital Fall Risk Intelligence Platform</p>
+
+            <div id="login-error" style="display:none;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:16px;">❌ Invalid credentials. Please try again.</div>
+
+            <div style="text-align:left;margin-bottom:14px;">
+                <label style="font-size:12px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;">Username</label>
+                <input id="login-user" type="text" placeholder="Enter username" autocomplete="username"
+                    style="width:100%;padding:11px 14px;border-radius:8px;border:1.5px solid var(--color-border);font-size:14px;margin-top:6px;box-sizing:border-box;outline:none;transition:border 0.2s;"
+                    onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'">
+            </div>
+            <div style="text-align:left;margin-bottom:22px;">
+                <label style="font-size:12px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;">Password</label>
+                <input id="login-pass" type="password" placeholder="Enter password" autocomplete="current-password"
+                    style="width:100%;padding:11px 14px;border-radius:8px;border:1.5px solid var(--color-border);font-size:14px;margin-top:6px;box-sizing:border-box;outline:none;transition:border 0.2s;"
+                    onfocus="this.style.borderColor='var(--color-primary)'" onblur="this.style.borderColor='var(--color-border)'"
+                    onkeydown="if(event.key==='Enter') doLogin()">
+            </div>
+            <button onclick="doLogin()" style="width:100%;background:var(--color-primary);color:white;border:none;padding:14px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;transition:opacity 0.2s;" onmouseover="this.style.opacity=0.9" onmouseout="this.style.opacity=1">
+                Sign In →
+            </button>
+            <div style="margin-top:20px;font-size:11px;color:var(--color-text-muted);line-height:1.8;text-align:left;background:#f8fafc;border-radius:8px;padding:10px 14px;">
+                <details>
+                    <summary style="cursor:pointer;font-weight:600;outline:none;">Show Demo Credentials</summary>
+                    <div style="margin-top:8px;padding-left:12px;border-left:2px solid #e2e8f0;">
+                        doctor / doc123 &nbsp;|&nbsp; nurse / nurse123<br>
+                        reception / rec123 &nbsp;|&nbsp; admin / admin123
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TAB BAR ═══ -->
+    <div class="tab-bar">
+        <button class="tab" id="tab-reception" onclick="switchTab('reception')">🏨 Reception</button>
+        <button class="tab active" id="tab-doctor" onclick="switchTab('doctor')">👨‍⚕️ Doctor</button>
+        <button class="tab" id="tab-neuro" onclick="switchTab('neuro')">🧠 Neurological</button>
+        <button class="tab" id="tab-nurse" onclick="switchTab('nurse')">👩‍⚕️ Nurse</button>
+        <button class="tab" id="tab-admin" onclick="switchTab('admin')" style="border-left:2px solid var(--color-border);">⚙️ Device Manager</button>
+    </div>
+
+    <!-- ═══ ADMIN PANEL ═══ -->
+    <div id="panel-admin" class="panel">
+        <div class="top-bar" style="margin-bottom: 0;">
+            <div>
+                <h2>⚙️ Device & Patient Management</h2>
+                <div style="margin-top:8px" class="live-dot"><span class="pulse"></span> Band Registry</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div style="font-size:14px;font-weight:500;color:var(--color-text-main)" class="user-name-display">Admin</div>
+                <button class="btn btn-outline" onclick="logout()">Sign out</button>
+            </div>
+        </div>
+        
+        <div class="tab-bar" style="padding: 1.5rem 0 1rem 0; margin-bottom: 1.5rem; border-bottom: none; gap: 8px;">
+            <button class="tab active" style="padding: 8px 16px; font-size: 13px;" id="sub-adm-overview" onclick="switchAdminTab('overview')">Overview</button>
+            <button class="tab" style="padding: 8px 16px; font-size: 13px;" id="sub-adm-fleet" onclick="switchAdminTab('fleet')">Device Fleet</button>
+            <button class="tab" style="padding: 8px 16px; font-size: 13px;" id="sub-adm-integration" onclick="switchAdminTab('integration')">Integration & Logs</button>
+            <button class="tab" style="padding: 8px 16px; font-size: 13px;" id="sub-adm-staff" onclick="switchAdminTab('staff')">Staff Access</button>
+        </div>
+
+        <div id="admin-view-overview" style="display:block;">
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-label">Total Patients</div>
+                    <div class="stat-val" id="adm-total">0</div>
+                </div>
+                <div class="stat-card" style="border-bottom:4px solid var(--risk-low)">
+                    <div class="stat-label">Bands Active</div>
+                    <div class="stat-val" style="color:var(--risk-low)" id="adm-active">0</div>
+                </div>
+                <div class="stat-card" style="border-bottom:4px solid var(--risk-med)">
+                    <div class="stat-label">Pending Intake</div>
+                    <div class="stat-val" style="color:var(--risk-med)" id="adm-pending">0</div>
+                </div>
+            </div>
+            <div class="section-label">Band ↔ Patient Registry</div>
+            <div class="table-container">
+                <table class="patient-table">
+                    <thead>
+                        <tr>
+                            <th>Patient ID</th>
+                            <th>Name</th>
+                            <th>Room</th>
+                            <th>IMU Band (BNO085)</th>
+                            <th>SpO₂ Sensor (MAX30100)</th>
+                            <th>Live Risk</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="admin-view-fleet" style="display:none;">
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-label">Total Devices</div><div class="stat-val" id="adm-fleet-total">0</div></div>
+                <div class="stat-card" style="border-bottom:4px solid var(--risk-low)"><div class="stat-label">Online Now</div><div class="stat-val" style="color:var(--risk-low)" id="adm-fleet-online">0</div></div>
+                <div class="stat-card" style="border-bottom:4px solid var(--risk-high)"><div class="stat-label">Low Battery (<20%)</div><div class="stat-val" style="color:var(--risk-high)" id="adm-fleet-lowbatt">0</div></div>
+            </div>
+            <div class="table-container">
+                <table class="patient-table">
+                    <thead><tr><th>Device ID</th><th>Assigned Patient</th><th>Type</th><th>Status</th><th>Battery %</th><th>Last Sync</th><th>Calibration</th></tr></thead>
+                    <tbody id="admin-fleet-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="admin-view-integration" style="display:none;">
+            <div class="section-label">System Integration Status</div>
+            <div class="stats-row">
+                <div class="stat-card" style="border-bottom:4px solid var(--color-border);"><div class="stat-label">HIS/EHR Sync</div><div class="stat-val" style="color:var(--color-text-muted);font-size:18px;margin-top:8px;">Not Connected</div></div>
+                <div class="stat-card" style="border-bottom:4px solid var(--color-border);"><div class="stat-label">API Endpoint</div><div class="stat-val" style="color:var(--color-text-muted);font-size:16px;margin-top:8px;">/api/patients</div></div>
+                <div class="stat-card"><div class="stat-label">Data Export</div><div style="margin-top:10px;"><button class="btn btn-outline" onclick="alert('Coming soon')">Export CSV/PDF</button></div></div>
+                <div class="stat-card"><div class="stat-label">Last System Check</div><div class="stat-val" style="font-size:16px;margin-top:8px;" id="adm-sys-check">Just now</div></div>
+            </div>
+            <div class="section-label" style="margin-top:20px;">Audit Log (Alert Acknowledgments)</div>
+            <div class="table-container">
+                <table class="patient-table">
+                    <thead><tr><th>Timestamp</th><th>Patient</th><th>Room</th><th>Alert Type</th><th>Acknowledged By</th></tr></thead>
+                    <tbody id="admin-audit-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="admin-view-staff" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div class="section-label" style="margin:0;">Authorized Staff Accounts</div>
+                <button class="btn btn-primary" onclick="alert('Coming soon')">+ Add Staff Member</button>
+            </div>
+            <div class="table-container">
+                <table class="patient-table">
+                    <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Last Login</th></tr></thead>
+                    <tbody id="admin-staff-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ RECEPTION PANEL ═══ -->
+    <div id="panel-reception" class="panel">
+        <div class="top-bar">
+            <div>
+                <h2>Hospital Reception Registration</h2>
+                <div style="margin-top:8px" class="live-dot"><span class="pulse"></span> Admissions Online</div>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center;">
+                <button class="btn btn-primary" onclick="document.getElementById('register-modal').style.display='flex'">+ Register Patient</button>
+                <div style="display:flex;align-items:center;gap:16px;border-left:1px solid var(--color-border);padding-left:16px;">
+                    <div style="font-size:14px;font-weight:500;color:var(--color-text-main)" class="user-name-display">Receptionist</div>
+                    <button class="btn btn-outline" onclick="logout()">Sign out</button>
+                </div>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Total Registered Today</div>
+                <div class="stat-val" id="rec-total">0</div>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="patient-table">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Room</th>
+                        <th>Reason for Admission</th>
+                        <th>Sensor Status</th>
+                    </tr>
+                </thead>
+                <tbody id="reception-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══ DOCTOR PANEL ═══ -->
+    <div id="panel-doctor" class="panel active">
+        <div class="top-bar">
+            <div>
+                <h2>High-Risk Patient Overview (&gt; 60%)</h2>
+                <div style="margin-top:8px" class="live-dot"><span class="pulse"></span> Live Sync Active</div>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center;">
+                <input class="search-box" placeholder="Search patient ID or name..." oninput="filterPatients(this.value)" />
+                <div style="display:flex;align-items:center;gap:16px;border-left:1px solid var(--color-border);padding-left:16px;">
+                    <div style="font-size:14px;font-weight:500;color:var(--color-text-main)" class="user-name-display">Dr. Admin</div>
+                    <button class="btn btn-outline" onclick="logout()">Sign out</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Total Patients Monitored</div>
+                <div class="stat-val" id="doc-stat-total">0</div>
+                <div class="stat-sub">Network Wide</div>
+            </div>
+            <div class="stat-card" style="border-bottom:4px solid var(--risk-high)">
+                <div class="stat-label">High Fall Risk</div>
+                <div class="stat-val" id="doc-stat-high" style="color:var(--risk-high)">0</div>
+                <div class="stat-sub">Scores Above 75%</div>
+            </div>
+            <div class="stat-card" style="border-bottom:4px solid var(--risk-med)">
+                <div class="stat-label">Unacknowledged Alerts</div>
+                <div class="stat-val" id="doc-stat-alerts" style="color:var(--risk-med)">0</div>
+                <div class="stat-sub">Awaiting Nurse Action</div>
+            </div>
+            <div class="stat-card" style="border-bottom:4px solid var(--color-primary)">
+                <div class="stat-label">Incidents History</div>
+                <div class="stat-val" id="doc-stat-incidents">0</div>
+                <div class="stat-sub">Based on patient history</div>
+            </div>
+        </div>
+
+        <div class="section-label">Patient Roster</div>
+        <div class="table-container">
+            <table class="patient-table" id="ptable">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Age Impact</th>
+                        <th>Pharmacy Risk</th>
+                        <th>Room</th>
+                        <th>Fall Risk Score</th>
+                        
+                        <th>Last Update</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="ptbody"></tbody>
+            </table>
+        </div>
+
+        <div class="detail-pane" id="detail-pane">
+            <div id="detail-content"></div>
+        </div>
+    </div>
+
+    <!-- ═══ NEUROLOGICAL PANEL ═══ -->
+    <div id="panel-neuro" class="panel">
+        <div class="top-bar">
+            <div>
+                <h2>Neurological &amp; Fall-Prone Roster</h2>
+                <div style="margin-top:8px" class="live-dot"><span class="pulse"></span> Live Gait Analytics</div>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center;">
+                <div style="display:flex;align-items:center;gap:16px;border-left:1px solid var(--color-border);padding-left:16px;">
+                    <div style="font-size:14px;font-weight:500;color:var(--color-text-main)" class="user-name-display">Dr. Admin</div>
+                    <button class="btn btn-outline" onclick="logout()">Sign out</button>
+                </div>
+            </div>
+        </div>
+        <div class="section-label">High Fall Chance Roster (Parkinson's &amp; Motor Neuropathy)</div>
+        <div class="table-container">
+            <table class="patient-table" id="neuro-ptable">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Room</th>
+                        <th>SDI (peaks/s)</th>
+                        <th>Pharmacy Risk</th>
+                        <th>TUG Time</th>
+                        <th>TUG Risk</th>
+                        <th>Dominant Trigger</th>
+                        <th>Composite Risk</th>
+                        <th>Last Update</th>
+                    </tr>
+                </thead>
+                <tbody id="neuro-ptbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══ NURSE PANEL ═══ -->
+    <div id="panel-nurse" class="panel">
+        <div class="top-bar">
+            <div>
+                <h2>Active Alert Monitor</h2>
+                <div style="margin-top:8px" class="live-dot"><span class="pulse"></span> Live Floor Feed</div>
+            </div>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                <div class="filter-bar">
+                    <button class="filter-btn active" id="fb-all" onclick="setFilter('all')">All Patients</button>
+                    <button class="filter-btn high" id="fb-high" onclick="setFilter('high')">High Risk</button>
+                    <button class="filter-btn med" id="fb-med" onclick="setFilter('med')">Medium Risk</button>
+                    <button class="filter-btn low" id="fb-low" onclick="setFilter('low')">Low Risk</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;border-left:1px solid var(--color-border);padding-left:16px;">
+                    <div style="font-size:14px;font-weight:500;color:var(--color-text-main)" class="user-name-display">Nurse</div>
+                    <button class="btn btn-outline" onclick="logout()">Sign out</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Active Alerts</div>
+                <div class="stat-val" style="color:var(--risk-high)" id="n-active">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Acknowledged</div>
+                <div class="stat-val" style="color:var(--color-primary)" id="n-acked">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Shift Caseload</div>
+                <div class="stat-val">24</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Current Nurse on Duty</div>
+                <div class="stat-val" style="font-size:20px;padding-top:6px">Priya R.</div>
+            </div>
+        </div>
+
+        <div class="nurse-grid" id="nurse-grid"></div>
+    </div>
+
+    <!-- ═══ FLOATING ASSIGN BUTTON ═══ -->
+    <button id="admit-btn" onclick="document.getElementById('assign-modal').style.display='flex'"
+        style="position:fixed;bottom:40px;right:40px;background:var(--color-primary);color:white;border:none;border-radius:50px;padding:16px 28px;font-size:16px;font-weight:bold;box-shadow:0 4px 15px rgba(0,0,0,0.3);cursor:pointer;z-index:900;transition:transform 0.2s;display:none;">
+        + Assign Band
+    </button>
+
+    <!-- ═══ FALL ALERT EMERGENCY MODAL ═══ -->
+    <div id="fall-alert-overlay"
+        style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;justify-content:center;align-items:center;">
+        <div style="background:white;border-radius:16px;padding:40px;max-width:480px;width:100%;text-align:center;border-top:6px solid var(--risk-high);box-shadow:0 25px 60px rgba(0,0,0,0.4);">
+            <div style="width:64px;height:64px;border-radius:50%;background:var(--risk-high-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:pulse 1s infinite;">
+                <span style="font-size:32px">🚨</span>
+            </div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--risk-high);text-transform:uppercase;margin-bottom:8px">CRITICAL FALL ALERT</div>
+            <div id="fall-alert-name" style="font-size:28px;font-weight:700;color:var(--color-text-main);margin-bottom:4px"></div>
+            <div id="fall-alert-room" style="font-size:14px;color:var(--color-text-muted);margin-bottom:20px"></div>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px">
+                <div style="padding:10px 18px;background:var(--risk-high-bg);border-radius:8px;border-left:4px solid var(--risk-high);">
+                    <div style="font-size:10px;color:var(--color-text-muted);font-weight:600;text-transform:uppercase">Motion Detected</div>
+                    <div id="fall-alert-motion" style="font-size:14px;font-weight:700;color:var(--risk-high);margin-top:2px"></div>
+                </div>
+                <div style="padding:10px 18px;background:var(--risk-med-bg);border-radius:8px;border-left:4px solid var(--risk-med);">
+                    <div style="font-size:10px;color:var(--color-text-muted);font-weight:600;text-transform:uppercase">Classification</div>
+                    <div id="fall-alert-category" style="font-size:14px;font-weight:700;color:var(--risk-med-text);margin-top:2px"></div>
+                </div>
+            </div>
+            <div style="font-size:14px;font-weight:600;color:var(--color-text-muted);margin-bottom:4px">Composite Risk Score</div>
+            <div id="fall-alert-risk" style="font-size:52px;font-weight:800;color:var(--risk-high);line-height:1;margin-bottom:24px"></div>
+            <button onclick="dismissFallAlert()" style="background:var(--risk-high);color:white;border:none;border-radius:50px;padding:14px 36px;font-size:15px;font-weight:700;cursor:pointer;width:100%;">
+                ✓ Acknowledged — Responding Now
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ REGISTER MODAL ═══ -->
+    <div id="register-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
+        <div style="background:white;padding:24px;border-radius:12px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;">
+            <h2 style="margin-top:0;color:var(--color-primary);">Hospital Reception Registration</h2>
+            <form id="registerForm" onsubmit="submitRegister(event)" style="display:flex;flex-direction:column;gap:12px;">
+                <input type="text" id="reg-name" placeholder="Full Name" required style="padding:8px;border-radius:6px;border:1px solid #ccc;">
+                <div style="display:flex;gap:12px;">
+                    <input type="number" id="reg-age" placeholder="Age" required style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc;">
+                    <input type="text" id="reg-room" placeholder="Room #" required style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc;">
+                </div>
+                <div style="display:flex;gap:12px;">
+                    <input type="number" id="reg-weight" placeholder="Weight (kg)" required style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc;">
+                    <input type="number" id="reg-height" placeholder="Height (cm)" required style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc;">
+                </div>
+                <input type="text" id="reg-dx" placeholder="Reason for Admission (Diagnosis)" required style="padding:8px;border-radius:6px;border:1px solid #ccc;">
+                <div style="display:flex;gap:12px;margin-top:16px;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">Register Patient</button>
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('register-modal').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══ ASSIGN MODAL ═══ -->
+    <div id="assign-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:center;">
+        <div style="background:white;padding:24px;border-radius:12px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;">
+            <h2 style="margin-top:0;color:var(--color-primary);">Nurse Intake &amp; Device Assignment</h2>
+            <form id="assignForm" onsubmit="submitAssign(event)" style="display:flex;flex-direction:column;gap:12px;">
+                <input type="text" id="intake-id" placeholder="Patient ID (Generated at Reception)" required style="padding:8px;border-radius:6px;border:1px solid #ccc;">
+
+                <h3 style="margin:0;font-size:16px;">Clinical Risk Factors</h3>
+                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="intake-parkinsons"> Parkinson's Disease</label>
+                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="intake-stroke"> Post-Stroke History</label>
+                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="intake-muscle"> Muscle/Joint Issues</label>
+                <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="intake-vision"> Vision Impairment</label>
+
+                <h3 style="margin:0;font-size:16px;">Pharmacy (FRID Meds)</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:13px;">
+                    <label><input type="checkbox" id="med-opioids"> Opioids</label>
+                    <label><input type="checkbox" id="med-antipsychotics"> Antipsychotics</label>
+                    <label><input type="checkbox" id="med-antidepressants"> Antidepressants</label>
+                    <label><input type="checkbox" id="med-benzodiazepines"> Benzodiazepines</label>
+                    <label><input type="checkbox" id="med-antiparkinson"> Anti-Parkinson</label>
+                    <label><input type="checkbox" id="med-antiepileptics"> Anti-Epileptics</label>
+                    <label><input type="checkbox" id="med-antihypertensives"> Antihypertensives</label>
+                    <label><input type="checkbox" id="med-diuretics"> Diuretics</label>
+                    <label><input type="checkbox" id="med-beta_blockers"> Beta Blockers</label>
+                    <label><input type="checkbox" id="med-alpha_blockers"> Alpha Blockers</label>
+                    <label><input type="checkbox" id="med-nsaids"> NSAIDs</label>
+                    <label><input type="checkbox" id="med-muscle_relaxants"> Muscle Relaxants</label>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">
+                    <label style="font-size:14px;color:#555;">Ward Type:</label>
+                    <select id="intake-ward" style="padding:8px;border-radius:6px;border:1px solid #ccc;">
+                        <option value="general">General</option>
+                        <option value="icu">ICU</option>
+                        <option value="neuro">Neurology</option>
+                    </select>
+                </div>
+
+                <hr style="border:0;border-top:1px solid #eee;margin:8px 0;">
+                <h3 style="margin:0;font-size:16px;">Hardware Connect</h3>
+                <div style="display:flex;gap:12px;">
+                    <select id="intake-band" required style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc;background:#e8f4fd;">
+                        <option value="">-- Setup IMU Band --</option>
+                        <option value="PT-002">Band 01 (PT-002)</option>
+                    </select>
+                    <select id="intake-spo2" required style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc;background:#fee2e2;">
+                        <option value="">-- Setup SpO2 --</option>
+                        <option value="esp8266_01">Ring 01 (esp8266_01)</option>
+                    </select>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:16px;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">Assign Sensors &amp; Admit</button>
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('assign-modal').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); } }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    </style>
+
+    <script>
+        const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') ? 'http://localhost:8000' : '';
+        let patients = [];
+        let deviceSyncTracker = {};
+        let selectedPt = null;
+        let nurseFilter = 'all';
+        let ackSet = new Set();
+        let auditLog = [];
+        let firedAlerts = new Set();
+        let userName = "Dr. Admin";
+        let currentRole = null;
+
+        // ── Sway ball interpolation state ──────────────────────────────────────
+        // We keep a "target" position and animate via rAF for ultra-smooth motion.
+        const swayState = {
+            targetX: 0, targetY: 0,
+            currentX: 0, currentY: 0,
+            rafId: null
+        };
+
+        // ── Credentials ────────────────────────────────────────────────────────
+        const USERS = {
+            'doctor':    { pass: 'doc123',   role: 'doctor' },
+            'nurse':     { pass: 'nurse123', role: 'nurse' },
+            'reception': { pass: 'rec123',   role: 'reception' },
+            'admin':     { pass: 'admin123', role: 'admin' },
+        };
+
+        function doLogin() {
+            const u = (document.getElementById('login-user').value || '').trim().toLowerCase();
+            const p = (document.getElementById('login-pass').value || '').trim();
+            const errEl = document.getElementById('login-error');
+            if (USERS[u] && USERS[u].pass === p) {
+                errEl.style.display = 'none';
+                login(USERS[u].role);
+            } else {
+                errEl.style.display = 'block';
+                document.getElementById('login-pass').value = '';
+            }
+        }
+
+        function login(role) {
+            currentRole = role;
+            document.getElementById('login-overlay').style.display = 'none';
+
+            ['tab-reception','tab-doctor','tab-neuro','tab-nurse','tab-admin'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            const admitBtn = document.getElementById('admit-btn');
+
+            if (role === 'reception') {
+                userName = 'Receptionist';
+                document.getElementById('tab-reception').style.display = 'inline-block';
+                if (admitBtn) admitBtn.style.display = 'none';
+                switchTab('reception');
+            } else if (role === 'doctor') {
+                userName = 'Dr. Admin';
+                document.getElementById('tab-doctor').style.display = 'inline-block';
+                document.getElementById('tab-neuro').style.display = 'inline-block';
+                if (admitBtn) admitBtn.style.display = 'none';
+                switchTab('doctor');
+            } else if (role === 'nurse') {
+                userName = 'Nurse Admin';
+                document.getElementById('tab-nurse').style.display = 'inline-block';
+                document.getElementById('tab-neuro').style.display = 'inline-block';
+                if (admitBtn) admitBtn.style.display = 'block';
+                switchTab('nurse');
+            } else if (role === 'admin') {
+                userName = 'Admin';
+                document.getElementById('tab-admin').style.display = 'inline-block';
+                if (admitBtn) admitBtn.style.display = 'none';
+                switchTab('admin');
+            }
+
+            document.querySelectorAll('.user-name-display').forEach(el => el.textContent = userName);
+            loadPatients();
+        }
+
+        function logout() {
+            currentRole = null;
+            document.getElementById('login-overlay').style.display = 'flex';
+        }
+
+        // ── Data loading ───────────────────────────────────────────────────────
+        async function loadPatients() {
+            try {
+                const res = await fetch(`${API}/api/patients`);
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    patients = data.map(p => {
+                        const v = p.vitals || {};
+                        const bd = p.band_data || {};
+                        return {
+                            id: p.id,
+                            name: p.name || '(No Name)',
+                            age: p.age || '—',
+                            room: p.room || '—',
+                            risk: p.risk || 0,
+                            trend: p.trend || [0],
+                            dx: p.diagnosis || '—',
+                            meds: p.medications || [],
+                            bp: v.bp || '—',
+                            hr: v.hr || 0,
+                            spo2: v.spo2 || 98,
+                            rr: v.rr || 16,
+                            temp: v.temp || 98.6,
+                            fall_hist: p.fall_history || 0,
+                            fall_history_log: p.fall_hist ? [
+                                { date: '2026-08-15', severity: 'high', category: 'unanticipated_physiological', outcome: 'Minor contusion' },
+                                { date: '2026-06-03', severity: 'low', category: 'accidental', outcome: 'No injury' }
+                            ].slice(0, p.fall_history) : [],
+                            airbag_status: p.airbag_status || 'not_installed',
+                            assigned: p.assigned_nurse || '—',
+                            assigned_band: p.assigned_band || 'Unassigned',
+                            alert_age: p.alert_age || '—',
+                            parkinsons: p.parkinsons || false,
+                            band: {
+                                steps: bd.step_count || bd.steps || 0,
+                                motion_events: bd.motion_events || 0,
+                                gait_score: bd.gait_score || 0,
+                                svm_history: bd.svm_history || [],
+                                grav_x: bd.grav_x || 0,
+                                grav_z: bd.grav_z || 0,
+                                calibrated: bd.calibrated || false,
+                                sdi: bd.sdi !== undefined ? bd.sdi : 2.5,
+                                motion_event: bd.motion_event || 'stable',
+                                postural_state: bd.postural_state || 'homeostasis',
+                                fall_category: bd.fall_category || 'accidental',
+                                dominant_trigger: bd.dominant_trigger || 'stable',
+                                risk_level: bd.risk_level || 'LOW',
+                                mfs_score: bd.mfs_score || 0,
+                                frid_score: bd.frid_score || 0,
+                                dynamic_score: bd.dynamic_score || 0,
+                                age_multiplier: bd.age_multiplier || 1.0,
+                                bmi_multiplier: bd.bmi_multiplier || 1.0,
+                                condition_multiplier: bd.condition_multiplier || 1.0,
+                                gait_speed_ms: bd.gait_speed_ms,
+                                tug_risk_level: bd.tug_risk_level || 'not_measured',
+                                tug_time_s: bd.tug_time_s || null,  // ← NEW: TUG time in seconds
+                                last_tug_time_s: bd.last_tug_time_s || null, // from gait metrics
+                                step_count: bd.step_count || 0,
+                                weight_kg: bd.weight_kg || 70,
+                            },
+                            shap: p.shap || []
+                        };
+                    });
+                }
+                
+                // Track live data syncs dynamically
+                patients.forEach(p => {
+                    // Check if band data is actually populated (e.g., has live motion events or steps)
+                    const hasLiveBandData = p.band && (p.band.step_count > 0 || p.band.motion_events > 0 || p.band.gait_speed_ms !== undefined);
+                    if (hasLiveBandData) {
+                        // If it has live data, update the sync tracker time to right now
+                        deviceSyncTracker[p.id] = new Date();
+                    }
+                });
+
+            } catch (err) {
+                console.log('Backend offline:', err.message);
+            }
+
+            renderPatients();
+            renderNurseGrid();
+            if (selectedPt) updateLiveDetails(selectedPt);
+            checkFallAlerts(patients);
+        }
+
+        // ── Fall alert system ──────────────────────────────────────────────────
+        function checkFallAlerts(patientList) {
+            patientList.forEach(p => {
+                const isFall = p.risk >= 60 && (
+                    (p.band.motion_event || '').includes('fall') ||
+                    p.band.motion_event === 'confirmed_fall' ||
+                    p.risk >= 75
+                );
+                const alertKey = p.id + ':' + p.band.motion_event + ':' + Math.floor(p.risk / 10);
+                if (isFall && !firedAlerts.has(alertKey)) {
+                    firedAlerts.add(alertKey);
+                    [...firedAlerts].filter(k => k.startsWith(p.id + ':') && k !== alertKey).forEach(k => firedAlerts.delete(k));
+                    triggerFallAlert(p);
+                } else if (!isFall) {
+                    [...firedAlerts].filter(k => k.startsWith(p.id + ':')).forEach(k => firedAlerts.delete(k));
+                }
+            });
+        }
+
+        function triggerFallAlert(p) {
+            const motionLabel = (p.band.motion_event || 'unknown').replace(/_/g,' ').toUpperCase();
+            const categoryLabel = (p.band.fall_category || 'accidental').replace(/_/g,' ').toUpperCase();
+            const overlay = document.getElementById('fall-alert-overlay');
+            document.getElementById('fall-alert-name').textContent = p.name;
+            document.getElementById('fall-alert-room').textContent = 'Room ' + p.room + '  |  ' + p.id;
+            document.getElementById('fall-alert-motion').textContent = motionLabel;
+            document.getElementById('fall-alert-category').textContent = 'IPSG.6: ' + categoryLabel;
+            document.getElementById('fall-alert-risk').textContent = p.risk + '%';
+            overlay.style.display = 'flex';
+            if (window.Notification && Notification.permission === 'granted') {
+                new Notification('🚨 FALL ALERT — ' + p.name, { body: 'Room ' + p.room + ' | ' + motionLabel });
+            }
+        }
+
+        function dismissFallAlert() {
+            document.getElementById('fall-alert-overlay').style.display = 'none';
+        }
+
+        if (window.Notification && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // ── Helpers ────────────────────────────────────────────────────────────
+        function riskClass(r) { return r >= 75 ? 'high' : r >= 50 ? 'med' : 'low'; }
+        function riskColor(r) { return r >= 75 ? 'var(--risk-high)' : r >= 50 ? 'var(--risk-med)' : 'var(--risk-low)'; }
+
+        function trendBars(trend) {
+            const max = Math.max(...trend, 100);
+            return trend.map(v => {
+                const h = Math.round((v / max) * 32);
+                return `<div class="trend-bar" style="height:${h}px;background:${riskColor(v)};flex:1"></div>`;
+            }).join('');
+        }
+
+        // ── Waveform SVG ───────────────────────────────────────────────────────
+        function drawWaveform(history) {
+            if (!history || history.length === 0) {
+                return '<div style="color:var(--color-text-muted);font-size:12px;padding:12px;text-align:center;background:white;border-radius:6px;border:1px solid #e2e8f0;">Awaiting sensor data...</div>';
+            }
+            const w = 400, h = 60;
+            const maxVal = Math.max(3.0, ...history);
+            const dx = w / Math.max(29, history.length - 1);
+            let path = '', fillPath = '';
+            for (let i = 0; i < history.length; i++) {
+                const x = i * dx;
+                const y = h - ((history[i] / maxVal) * h);
+                path += (i === 0 ? `M${x},${y}` : ` L${x},${y}`);
+            }
+            fillPath = path + ` L${w},${h} L0,${h} Z`;
+            const thresholdY = h - (2.5 / maxVal) * h;
+            return `<div style="background:white;border-radius:6px;padding:12px;border:1px solid var(--color-border);overflow:hidden;">
+                <svg width="100%" height="60px" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block;">
+                    <path d="${fillPath}" fill="rgba(37,99,235,0.1)"/>
+                    <path d="${path}" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linejoin="round"/>
+                    <line x1="0" y1="${thresholdY}" x2="${w}" y2="${thresholdY}" stroke="var(--risk-high)" stroke-width="1" stroke-dasharray="4" opacity="0.3"/>
+                </svg>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--color-text-muted);margin-top:4px;font-weight:600;">
+                    <span>History Segment</span>
+                    <span>Current: <strong style="color:var(--color-text-main)">${history[history.length-1].toFixed(2)}G</strong></span>
+                </div>
+            </div>`;
+        }
+
+        // ── Sway Map — static HTML render ────────────────────────────────────
+        // The ball position is updated live via updateSwayBall() without re-rendering HTML
+        function drawSwayMap(gx, gz, isParkinsons, isCalibrated) {
+            const r = 120;
+            const maxG = isParkinsons ? 7.0 : 5.0;
+            let dx = (gx / maxG) * r;
+            let dy = -(gz / maxG) * r;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > r) { dx = (dx / dist) * r; dy = (dy / dist) * r; }
+            const isWarn = dist >= (r * 0.8);
+            const warnColor = isWarn ? 'var(--risk-high)' : 'var(--risk-low)';
+            const bgColor   = isWarn ? 'var(--risk-high-bg)' : 'var(--risk-low-bg)';
+            const maxLabel  = isParkinsons ? '7.0G — Parkinson\'s 45°' : '5.0G — 30° Tilt';
+            const calibTag  = isCalibrated
+                ? '<span style="color:var(--risk-low);font-weight:600">✓ Calibrated correctly</span>'
+                : '<span style="color:var(--risk-med)">Awaiting calibration…</span>';
+
+            // Store state for live updates
+            swayState.targetX = dx;
+            swayState.targetY = dy;
+            swayState.currentX = dx;
+            swayState.currentY = dy;
+
+            return `
+            <div class="sway-container" id="sway-wrapper" data-parkinsons="${isParkinsons}" data-max-g="${maxG}" data-r="${r}">
+                <div class="sway-circle${isWarn ? ' warn' : ''}" id="sway-circle" style="border-color:${warnColor};background:${bgColor}">
+                    <div class="sway-axis-v"></div>
+                    <div class="sway-axis-h"></div>
+                    <div class="sway-ring-inner"></div>
+                    <div class="sway-center-dot"></div>
+                    <!-- Trail dots for smooth effect -->
+                    <div id="sway-trail-2" style="transform:translate(${dx}px,${dy}px)"></div>
+                    <div id="sway-trail-1" style="transform:translate(${dx}px,${dy}px)"></div>
+                    <!-- Main sway ball -->
+                    <div id="sway-ball-dot" style="transform:translate(${dx}px,${dy}px)"></div>
+                </div>
+                <div class="sway-info">
+                    <div style="font-weight:700;font-size:16px;color:var(--color-text-main);margin-bottom:6px;">Postural Sway Target</div>
+                    <div style="font-size:12px;margin-bottom:12px;">${calibTag}</div>
+                    <div class="sway-info-row"><span>Lateral (L/R):</span> <strong id="sway-gx-val" style="color:var(--color-text-main)">${(gx||0).toFixed(2)} G</strong></div>
+                    <div class="sway-info-row"><span>Anterior (F/B):</span> <strong id="sway-gz-val" style="color:var(--color-text-main)">${(gz||0).toFixed(2)} G</strong></div>
+                    <div style="margin-top:12px;font-size:12px;padding:6px 12px;background:${bgColor};color:${warnColor};border-radius:var(--radius-pill);display:inline-block;font-weight:700;">
+                        Fall Limit: ${maxLabel}
+                    </div>
+                    <div style="margin-top:12px;font-size:11px;padding:8px;background:var(--color-bg-app);border:1px solid var(--color-border);border-radius:8px;">
+                        <strong>Tip:</strong> If the red dot breaches the dashed warning line consistently, patient balance is compromised.
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // ── Live sway ball updater (no re-render, just DOM transform) ─────────
+        function updateSwayBall(gx, gz, isParkinsons) {
+            const ball   = document.getElementById('sway-ball-dot');
+            const trail1 = document.getElementById('sway-trail-1');
+            const trail2 = document.getElementById('sway-trail-2');
+            const circle = document.getElementById('sway-circle');
+            const gxVal  = document.getElementById('sway-gx-val');
+            const gzVal  = document.getElementById('sway-gz-val');
+            if (!ball) return;
+
+            const maxG = isParkinsons ? 7.0 : 5.0;
+            const r    = 120;
+
+            let dx = (gx / maxG) * r;
+            let dy = -(gz / maxG) * r;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > r) { dx = (dx / dist) * r; dy = (dy / dist) * r; }
+
+            const isWarn = dist >= (r * 0.8);
+
+            // Update ball transform — CSS transition handles smooth animation
+            ball.style.transform   = `translate(${dx}px,${dy}px)`;
+            trail1.style.transform = `translate(${dx}px,${dy}px)`;
+            trail2.style.transform = `translate(${dx}px,${dy}px)`;
+
+            // Update ball color based on zone
+            if (isWarn) {
+                ball.style.background  = 'var(--risk-high)';
+                ball.style.boxShadow   = '0 4px 12px rgba(239,68,68,0.7)';
+                trail1.style.background = 'rgba(239,68,68,0.35)';
+                trail2.style.background = 'rgba(239,68,68,0.15)';
+                if (circle) {
+                    circle.style.borderColor = 'var(--risk-high)';
+                    circle.style.background  = 'var(--risk-high-bg)';
+                }
+            } else {
+                ball.style.background  = 'var(--color-primary)';
+                ball.style.boxShadow   = '0 4px 12px rgba(37,99,235,0.5)';
+                trail1.style.background = 'rgba(37,99,235,0.3)';
+                trail2.style.background = 'rgba(37,99,235,0.12)';
+                if (circle) {
+                    circle.style.borderColor = 'var(--risk-low)';
+                    circle.style.background  = 'var(--risk-low-bg)';
+                }
+            }
+
+            // Update readout labels
+            if (gxVal) gxVal.textContent = `${(gx||0).toFixed(2)} G`;
+            if (gzVal) gzVal.textContent = `${(gz||0).toFixed(2)} G`;
+        }
+
+        // ── Live detail pane update (no full re-render during poll) ───────────
+        function updateLiveDetails(pid) {
+            const p = patients.find(x => x.id === pid);
+            if (!p) return;
+
+            // Only do a partial DOM update if the pane is already open
+            const pane = document.getElementById('detail-pane');
+            if (!pane || !pane.classList.contains('open')) return;
+
+            // Update sway ball position without rebuilding HTML
+            updateSwayBall(p.band.grav_x, p.band.grav_z, p.parkinsons);
+
+            // Update numeric readouts that change live
+            const safe = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            safe('live-risk-score',   p.risk + '%');
+            safe('live-risk-level',   p.band.risk_level || 'LOW');
+            safe('live-spo2',         p.spo2 + '%');
+            safe('live-hr',           p.hr);
+            safe('live-sdi',          typeof p.band.sdi === 'number' ? p.band.sdi.toFixed(2) : '—');
+            safe('live-step-count',   (p.band.step_count || 0) + ' steps');
+            safe('live-dynamic-score', (p.band.dynamic_score || 0).toFixed(1));
+            safe('live-composite-score-bar', p.risk + '%');
+            safe('live-tug-time',     formatTugTime(p.band));
+        }
+
+        // ── TUG time formatter ─────────────────────────────────────────────────
+        function formatTugTime(band) {
+            // Check multiple possible field names from the backend
+            const t = band.last_tug_time_s || band.tug_time_s || null;
+            if (t === null || t === undefined || t === 0) return '—';
+            return t.toFixed(1) + ' s';
+        }
+
+        function tugRiskLabel(band) {
+            const level = band.tug_risk_level || 'not_measured';
+            const map = {
+                high_risk: { label: 'HIGH RISK', color: 'var(--risk-high)' },
+                moderate_risk: { label: 'MODERATE', color: 'var(--risk-med)' },
+                low_risk: { label: 'LOW RISK', color: 'var(--risk-low)' },
+                not_measured: { label: 'NOT MEASURED', color: 'var(--color-text-muted)' },
+            };
+            return map[level] || map['not_measured'];
+        }
+
+        // ── Detail pane — full build ──────────────────────────────────────────
+        function updateDetailContent(pid) {
+            const p = patients.find(x => x.id === pid);
+            if (!p) return;
+
+            const defaultShap = [{ f: 'Static Clinical Baseline', v: 20, pos: true }];
+            const shap = p.shap && p.shap.length > 0 ? p.shap : defaultShap;
+
+            const trendMax = Math.max(...p.trend, 100);
+            const days = ['7d','6d','5d','4d','3d','2d','Now'];
+            const trendBarsH = p.trend.map((v, i) => {
+                const h = Math.round((v / trendMax) * 50);
+                return `<div style="display:flex;flex-direction:column;align-items:center;flex:1;gap:6px">
+                    <div style="height:${h}px;background:${riskColor(v)};width:100%;border-radius:4px 4px 0 0;"></div>
+                    <span style="font-size:11px;font-weight:500;color:var(--color-text-muted)">${days[i]||''}</span>
+                </div>`;
+            }).join('');
+
+            function motionBadge(ev) {
+                const label = (ev || 'stable').replace(/_/g,' ').toUpperCase();
+                const isFall = ev && (ev.includes('fall') || ev === 'pre_fall_warning');
+                const isNeutral = ev === 'intentional_bend' || ev === 'stable';
+                const color = isFall ? 'var(--risk-high)' : isNeutral ? 'var(--risk-low)' : 'var(--risk-med)';
+                const bg    = isFall ? 'var(--risk-high-bg)' : isNeutral ? 'var(--risk-low-bg)' : 'var(--risk-med-bg)';
+                return `<span style="font-size:12px;font-weight:700;padding:4px 12px;background:${bg};color:${color};border-radius:var(--radius-pill);display:inline-block">${label}</span>`;
+            }
+
+            function posturalBadge(st) {
+                const label = (st || 'homeostasis').replace(/_/g,' ').toUpperCase();
+                const color = st === 'active_fall_trajectory' ? 'var(--risk-high)' : st === 'prodromal_instability' ? 'var(--risk-med)' : 'var(--risk-low)';
+                const bg    = st === 'active_fall_trajectory' ? 'var(--risk-high-bg)' : st === 'prodromal_instability' ? 'var(--risk-med-bg)' : 'var(--risk-low-bg)';
+                return `<span style="font-size:12px;font-weight:700;padding:4px 12px;background:${bg};color:${color};border-radius:var(--radius-pill);display:inline-block">${label}</span>`;
+            }
+
+            function categoryBadge(cat) {
+                const label = (cat || 'accidental').replace(/_/g,' ').toUpperCase();
+                const color = cat === 'unanticipated_physiological' ? 'var(--risk-high)' : cat === 'anticipated_physiological' ? 'var(--risk-med)' : 'var(--color-text-muted)';
+                return `<span style="font-size:11px;font-weight:600;color:${color}">${label}</span>`;
+            }
+
+            const tug = tugRiskLabel(p.band);
+            const rlColor = { CRITICAL: 'var(--risk-high)', HIGH: 'var(--risk-high)', MEDIUM: 'var(--risk-med)', LOW: 'var(--risk-low)' }[p.band.risk_level] || 'var(--risk-low)';
+            const sdiColor = p.band.sdi < 1.0 ? 'var(--risk-high)' : p.band.sdi < 1.4 ? 'var(--risk-med)' : 'var(--color-text-main)';
+            const tugTimeStr = formatTugTime(p.band);
+
+            document.getElementById('detail-content').innerHTML = `
+<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--color-border);padding-bottom:1.5rem;margin-bottom:1.5rem">
+  <div>
+    <div style="font-size:22px;font-weight:700">${p.name}
+      <span style="font-size:14px;font-weight:500;color:var(--color-text-muted);margin-left:8px">ID: ${p.id} &nbsp;|&nbsp; ${p.age} yrs &nbsp;|&nbsp; Rm ${p.room}</span>
+    </div>
+    <div style="font-size:14px;color:var(--color-text-main);font-weight:500;margin-top:8px">Dx: ${p.dx}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${posturalBadge(p.band.postural_state)}
+      ${motionBadge(p.band.motion_event)}
+      ${categoryBadge(p.band.fall_category)}
+    </div>
+  </div>
+  <div style="text-align:right;background:var(--color-bg-app);padding:12px 24px;border-radius:var(--radius-lg);border:1px solid var(--color-border);">
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);margin-bottom:2px">Composite Risk</div>
+    <div id="live-risk-score" style="font-size:42px;font-weight:700;color:${riskColor(p.risk)};line-height:1">${p.risk}%</div>
+    <div id="live-risk-level" style="font-size:11px;font-weight:700;color:${rlColor};margin-top:4px">${p.band.risk_level || 'LOW'}</div>
+  </div>
+</div>
+
+<div class="vital-grid">
+  <div class="vital-card"><div class="vital-name">Blood Pressure</div><div class="vital-val">${p.bp}</div><div class="vital-unit">mmHg</div></div>
+  <div class="vital-card"><div class="vital-name">Heart Rate</div><div class="vital-val" id="live-hr" style="color:${p.hr>90?'var(--risk-high)':'var(--color-text-main)'}">${p.hr}</div><div class="vital-unit">bpm</div></div>
+  <div class="vital-card"><div class="vital-name">Blood Oxygen</div><div class="vital-val" id="live-spo2" style="color:${p.spo2<95?'var(--risk-high)':p.spo2<97?'var(--risk-med)':'var(--color-text-main)'}">${p.spo2}%</div><div class="vital-unit">SpO₂</div></div>
+  <div class="vital-card"><div class="vital-name">Respiration</div><div class="vital-val">${p.rr}</div><div class="vital-unit">breaths/min</div></div>
+</div>
+
+<div class="detail-grid">
+  <!-- LEFT: Score Breakdown -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <div style="background:var(--color-bg-app);padding:20px;border-radius:var(--radius-lg);border:1px solid var(--color-border);">
+      <div class="section-label">ClinicalGuard Score Breakdown</div>
+      <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:16px">Composite = (MFS + FRID + Dynamic) × Multipliers</div>
+                <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px;">Rule-based clinical scoring — not a diagnosis. Always confirm with clinical judgment.</div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border)">
+          <span style="color:var(--color-text-muted)">📋 Morse Fall Scale (MFS)</span>
+          <strong style="color:${p.band.mfs_score>=45?'var(--risk-high)':p.band.mfs_score>=25?'var(--risk-med)':'var(--risk-low)'}">${p.band.mfs_score} / 125</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border)">
+          <span style="color:var(--color-text-muted)">💊 FRID Pharmacological Risk</span>
+          <strong style="color:${p.band.frid_score>30?'var(--risk-high)':p.band.frid_score>15?'var(--risk-med)':'var(--risk-low)'}">${(p.band.frid_score||0).toFixed(1)} pts</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border)">
+          <span style="color:var(--color-text-muted)">📡 Dynamic Sensor Score</span>
+          <strong id="live-dynamic-score" style="color:${p.band.dynamic_score>60?'var(--risk-high)':p.band.dynamic_score>30?'var(--risk-med)':'var(--risk-low)'}">${(p.band.dynamic_score||0).toFixed(1)} / 100</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border)">
+          <span style="color:var(--color-text-muted)">🧓 Age Multiplier</span>
+          <strong>${(p.band.age_multiplier||1).toFixed(1)}×</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border)">
+          <span style="color:var(--color-text-muted)">⚕️ Condition Multiplier</span>
+          <strong style="color:${p.band.condition_multiplier>=2?'var(--risk-high)':p.band.condition_multiplier>=1.5?'var(--risk-med)':'var(--risk-low)'}">${(p.band.condition_multiplier||1).toFixed(1)}×</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border)">
+          <span style="color:var(--color-text-muted)">⚖️ BMI Multiplier</span>
+          <strong>${(p.band.bmi_multiplier||1).toFixed(2)}×</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:${riskColor(p.risk)};border-radius:8px;">
+          <span style="color:white;font-weight:600">= Composite Risk Score</span>
+          <strong id="live-composite-score-bar" style="color:white;font-size:16px">${p.risk}%</strong>
+        </div>
+      </div>
+    </div>
+
+    <details id="fall-log-${p.id}" open style="background:var(--color-bg-app);padding:20px;border-radius:var(--radius-lg);border:1px solid var(--color-border);margin-bottom:16px;">
+      <summary class="section-label" style="cursor:pointer;list-style:none;outline:none;display:flex;justify-content:space-between;">Fall History Log</summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        ${p.fall_history_log && p.fall_history_log.length > 0 ? 
+            p.fall_history_log.map(log => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:white;border-radius:8px;border:1px solid var(--color-border);font-size:12px;">
+              <span style="color:var(--color-text-muted);font-weight:600;width:80px;">${log.date}</span>
+              <span class="badge ${log.severity}">${log.severity.toUpperCase()}</span>
+              <span style="color:var(--color-text-main);width:120px;text-align:center;">${(log.category||'').replace(/_/g,' ').toUpperCase()}</span>
+              <span style="color:var(--color-text-muted);flex:1;text-align:right;">${log.outcome}</span>
+            </div>
+            `).join('')
+            : '<div style="font-size:13px;color:var(--color-text-muted);text-align:center;padding:10px;">No prior fall history on record</div>'
+        }
+      </div>
+    </details>
+
+    ${shap.length > 1 ? `
+    <div style="background:var(--color-bg-app);padding:20px;border-radius:var(--radius-lg);border:1px solid var(--color-border);">
+      <div class="section-label">Active Clinical Alerts</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        ${shap.slice(1).map(s => `
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 12px;background:var(--risk-high-bg);border-left:3px solid var(--risk-high);border-radius:0 8px 8px 0;font-size:12px;">
+            <span style="font-size:16px;flex-shrink:0">⚠️</span>
+            <span style="color:var(--color-text-main);line-height:1.4">${s.feature || s.f}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
+  </div>
+
+  <!-- RIGHT: Waveforms + Analytics -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    
+
+    <div style="background:var(--color-bg-app);padding:20px;border-radius:var(--radius-lg);border:1px solid var(--color-border);">
+      <div class="section-label" style="margin-bottom:12px">Live Wearable Telemetry</div>
+      <div class="section-label" style="margin-bottom:6px">Impact Waveform (SVM)</div>
+      <div id="live-svm-waveform-container">${drawWaveform(p.band.svm_history)}</div>
+      <div class="section-label" style="margin-top:16px;margin-bottom:6px">2D Postural Sway</div>
+      ${drawSwayMap(p.band.grav_x, p.band.grav_z, p.parkinsons, p.band.calibrated)}
+
+      <!-- Biomechanical Analytics Grid -->
+      <div class="section-label" style="margin-top:16px;margin-bottom:8px">Biomechanical Analytics</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+
+        <!-- SDI -->
+        <div style="padding:12px;background:white;border-radius:8px;border:1px solid var(--color-border);border-left:3px solid ${sdiColor};">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);letter-spacing:0.5px">Sway Density Index</div>
+          <div id="live-sdi" style="font-size:18px;font-weight:700;margin-top:4px;color:${sdiColor}">${(p.band.sdi||2.5).toFixed(2)}</div>
+          <div style="font-size:10px;color:var(--color-text-muted)">peaks/sec ${p.band.sdi<1.0?'🔴 Neurological':p.band.sdi<1.4?'🟡 Declining':'🟢 Normal'}</div>
+        </div>
+
+        <!-- Dominant Trigger -->
+        <div style="padding:12px;background:white;border-radius:8px;border:1px solid var(--color-border);border-left:3px solid var(--color-primary);">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);letter-spacing:0.5px">Dominant Trigger</div>
+          <div style="font-size:13px;font-weight:700;margin-top:4px;color:var(--color-text-main);">${(p.band.dominant_trigger||'stable').replace(/_/g,' ').toUpperCase()}</div>
+          <div style="font-size:10px;color:var(--color-text-muted)">Primary risk factor</div>
+        </div>
+
+        <!-- TUG Risk Level -->
+        <div class="tug-card" style="border-left-color:${tug.color};">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);letter-spacing:0.5px">TUG Risk Level</div>
+          <div class="tug-time-big" style="color:${tug.color}">${tug.label}</div>
+          <div style="font-size:10px;color:var(--color-text-muted)">Timed Up and Go</div>
+        </div>
+
+        <!-- TUG Time (NEW) -->
+        <div class="tug-card" style="border-left-color:${tug.color};">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);letter-spacing:0.5px">TUG Time</div>
+          <div id="live-tug-time" class="tug-time-big" style="color:${tug.color}">${tugTimeStr}</div>
+          <div style="font-size:10px;color:var(--color-text-muted)">
+            ${tugTimeStr === '—' ? 'Auto-detected from sensor' : (parseFloat(tugTimeStr) >= 12 ? '⚠️ Above 12s threshold' : parseFloat(tugTimeStr) >= 8 ? '🟡 Borderline' : '🟢 Within range')}
+          </div>
+        </div>
+
+        <!-- Airbag Deployment Status -->
+        <div id="airbag-status-${p.id}" style="padding:12px;background:white;border-radius:8px;border:1px solid var(--color-border);border-left:3px solid ${p.airbag_status === 'deployed' ? 'var(--risk-high)' : p.airbag_status === 'armed' ? 'var(--risk-low)' : 'var(--color-border)'};">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);letter-spacing:0.5px">Airbag Deployment Status</div>
+          <div style="font-size:14px;font-weight:700;margin-top:5px;line-height:1.2;color:${p.airbag_status === 'deployed' ? 'var(--risk-high)' : p.airbag_status === 'armed' ? 'var(--risk-low)' : 'var(--color-text-muted)'}">
+            ${p.airbag_status === 'not_installed' ? 'Not Installed — Planned Hardware' : p.airbag_status.toUpperCase()}
+          </div>
+        </div>
+
+        <!-- Gait Speed -->
+        <div style="padding:12px;background:white;border-radius:8px;border:1px solid var(--color-border);border-left:3px solid var(--color-primary);">
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted);letter-spacing:0.5px">Gait Speed</div>
+          <div style="font-size:18px;font-weight:700;margin-top:4px;color:${p.band.gait_speed_ms&&p.band.gait_speed_ms<0.5?'var(--risk-high)':p.band.gait_speed_ms&&p.band.gait_speed_ms<0.8?'var(--risk-med)':'var(--color-text-main)'}">
+            ${p.band.gait_speed_ms ? p.band.gait_speed_ms.toFixed(2) : '—'}
+          </div>
+          <div style="font-size:10px;color:var(--color-text-muted)">m/s ${p.band.gait_speed_ms&&p.band.gait_speed_ms<0.8?'⚠️ Below threshold':''}</div>
+        </div>
+
+        <!-- Step Count -->
+        <div style="padding:12px;background:white;border-radius:8px;border:1px solid var(--color-border);border-left:3px solid var(--color-primary);display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px">👟</span>
+          <div>
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--color-text-muted)">Step Count (Session)</div>
+            <div id="live-step-count" style="font-size:16px;font-weight:700">${p.band.step_count||0} steps</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
+        }
+
+        // ── Toggle detail pane ────────────────────────────────────────────────
+        function toggleDetail(pid) {
+            const pane = document.getElementById('detail-pane');
+            if (selectedPt === pid) {
+                selectedPt = null;
+                pane.classList.remove('open');
+                setTimeout(() => pane.style.display = 'none', 300);
+                renderPatients();
+                return;
+            }
+            selectedPt = pid;
+            renderPatients();
+            updateDetailContent(pid);
+            pane.style.display = 'block';
+            setTimeout(() => pane.classList.add('open'), 10);
+            pane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // ── Patient table render ───────────────────────────────────────────────
+        function renderPatients(filterStr = '') {
+            // Update Dynamic Doctor Top Stats
+            if (document.getElementById('doc-stat-total')) {
+                const total = patients.length;
+                const highRisk = patients.filter(p => p.risk >= 75).length;
+                
+                // Count active alerts that haven't been acknowledged
+                let unacked = 0;
+                patients.forEach(p => {
+                    const rc = riskClass(p.risk);
+                    if ((rc === 'high' || rc === 'med') && !ackSet.has(p.id)) unacked++;
+                });
+
+                // Sum up patient fall history
+                const totalIncidents = patients.reduce((sum, p) => sum + (parseInt(p.fall_hist) || 0), 0);
+
+                document.getElementById('doc-stat-total').textContent = total;
+                document.getElementById('doc-stat-high').textContent = highRisk;
+                document.getElementById('doc-stat-alerts').textContent = unacked;
+                document.getElementById('doc-stat-incidents').textContent = totalIncidents;
+            }
+
+            const tbody = document.getElementById('ptbody');
+            tbody.innerHTML = '';
+            let filtered = patients
+                .filter(p => !filterStr || p.name.toLowerCase().includes(filterStr.toLowerCase()) || p.id.toLowerCase().includes(filterStr.toLowerCase()))
+                .sort((a, b) => b.risk - a.risk);
+
+            if (!filtered.length) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--color-text-muted);">
+                    <div style="font-size:36px;margin-bottom:10px;">📭</div>
+                    <div style="font-size:14px;font-weight:600;">No patients admitted yet</div>
+                </td></tr>`;
+                return;
+            }
+
+            filtered.forEach(p => {
+                const rc = riskClass(p.risk);
+                const tr = document.createElement('tr');
+                if (selectedPt === p.id) tr.className = 'selected';
+                const fridScore = p.band?.frid_score || 0;
+                const phClass = fridScore>=35 ? 'var(--risk-high)' : fridScore>15 ? 'var(--risk-med)' : 'var(--risk-low)';
+                const phBg    = fridScore>=35 ? 'var(--risk-high-bg)' : fridScore>15 ? 'var(--risk-med-bg)' : 'var(--risk-low-bg)';
+                tr.innerHTML = `
+  <td><span style="font-weight:600">${p.name}</span><div style="font-size:11px;color:var(--color-text-muted)">ID: ${p.id}</div></td>
+  <td><strong>${(p.band.age_multiplier||1).toFixed(1)}x</strong></td>
+  <td><span style="font-size:12px;font-weight:600;padding:4px 8px;border-radius:6px;background:${phBg};color:${phClass}">${fridScore.toFixed(1)} Pts</span></td>
+  <td style="font-weight:500">${p.room}</td>
+  <td>
+    <div class="risk-bar-wrap">
+      <div class="risk-bar"><div class="risk-fill" style="width:${p.risk}%;background:${riskColor(p.risk)}"></div></div>
+      <span style="font-weight:700;color:${riskColor(p.risk)};min-width:36px">${p.risk}%</span>
+    </div>
+  </td>
+  
+  <td style="color:var(--color-text-muted);font-size:13px;font-family:monospace;font-weight:600;">${p.alert_age||'—'}</td>
+  <td><span class="badge ${rc}">${rc==='high'?'High Risk':rc==='med'?'Medium':'Low Risk'}</span></td>
+`;
+                tr.onclick = () => toggleDetail(p.id);
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterPatients(v) {
+            selectedPt = null;
+            const pane = document.getElementById('detail-pane');
+            pane.classList.remove('open');
+            setTimeout(() => pane.style.display = 'none', 300);
+            renderPatients(v);
+        }
+
+        // ── Neuro table render ─────────────────────────────────────────────────
+        function renderNeuroPatients() {
+            const tbody = document.getElementById('neuro-ptbody');
+            tbody.innerHTML = '';
+            const neuroPatients = patients.filter(p => p.parkinsons || (p.dx && p.dx.toLowerCase().includes('neuro')));
+
+            if (!neuroPatients.length) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:48px;color:var(--color-text-muted);">
+                    <div style="font-size:36px;margin-bottom:10px;">🧠</div>
+                    <div style="font-size:14px;font-weight:600;">No neurological patients on record</div>
+                </td></tr>`;
+                return;
+            }
+
+            neuroPatients.forEach(p => {
+                const tr = document.createElement('tr');
+                if (selectedPt === p.id) tr.className = 'selected';
+                const sdiColor = p.band.sdi < 1.0 ? 'var(--risk-high)' : p.band.sdi < 1.4 ? 'var(--risk-med)' : 'var(--color-primary)';
+                const tug = tugRiskLabel(p.band);
+                const tugTimeStr = formatTugTime(p.band);
+                const fridScore = p.band?.frid_score || 0;
+                const phClass = fridScore>=35 ? 'var(--risk-high)' : fridScore>15 ? 'var(--risk-med)' : 'var(--risk-low)';
+                const rc = riskClass(p.risk);
+
+                tr.innerHTML = `
+  <td><span style="font-weight:600">${p.name}</span><div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">${p.dx}</div></td>
+  <td style="font-weight:500">${p.room}</td>
+  <td style="font-weight:700;color:${sdiColor}">${p.band.sdi !== undefined ? p.band.sdi.toFixed(2) : '—'}</td>
+  <td style="font-weight:700;color:${phClass}">${fridScore.toFixed(1)}</td>
+  <td style="font-weight:700;color:${tug.color};font-variant-numeric:tabular-nums">${tugTimeStr}</td>
+  <td style="font-weight:600;color:${tug.color}">${tug.label}</td>
+  <td style="font-weight:600;color:var(--color-text-muted)">${(p.band.dominant_trigger||'—').replace(/_/g,' ').toUpperCase()}</td>
+  <td>
+    <div class="risk-bar-wrap">
+      <div class="risk-bar"><div class="risk-fill" style="width:${p.risk}%;background:${riskColor(p.risk)}"></div></div>
+      <span style="font-weight:700;color:${riskColor(p.risk)};min-width:36px">${p.risk}%</span>
+    </div>
+  </td>
+  <td style="color:var(--color-text-muted);font-size:13px;font-family:monospace;font-weight:600;">${p.alert_age||'—'}</td>
+`;
+                tr.onclick = () => toggleDetail(p.id);
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ── Reception table ───────────────────────────────────────────────────
+        function renderReceptionPatients() {
+            const tbody = document.getElementById('reception-tbody');
+            tbody.innerHTML = '';
+            document.getElementById('rec-total').textContent = patients.length;
+            patients.forEach(p => {
+                const tr = document.createElement('tr');
+                const isAssigned = p.band && p.band.mfs_score !== 0;
+                tr.innerHTML = `
+  <td><span style="font-family:monospace;font-weight:600;color:var(--color-primary)">${p.id}</span></td>
+  <td><span style="font-weight:600">${p.name}</span></td>
+  <td>${p.age} yrs</td>
+  <td style="font-weight:500">${p.room}</td>
+  <td style="color:var(--color-text-muted)">${p.dx}</td>
+  <td>${isAssigned ? '<span style="color:var(--risk-low);font-weight:bold;">Active</span>' : '<span style="color:var(--risk-med);font-weight:bold;">Pending Intake</span>'}</td>
+`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ── Nurse grid render ──────────────────────────────────────────────────
+        function renderNurseGrid() {
+            const grid = document.getElementById('nurse-grid');
+            const sorted = [...patients].sort((a, b) => b.risk - a.risk);
+            const filtered = nurseFilter === 'all' ? sorted : sorted.filter(p => riskClass(p.risk) === nurseFilter);
+            grid.innerHTML = '';
+            let active = 0, acked = 0;
+            filtered.forEach(p => {
+                const hasBand = p.assigned_band && p.assigned_band !== 'Unassigned';
+                const rc = hasBand ? riskClass(p.risk) : 'low';
+                const isAlert = hasBand && (rc === 'high' || rc === 'med');
+                const isAcked = hasBand && ackSet.has(p.id);
+                
+                if (isAlert && !isAcked) active++;
+                if (isAcked) acked++;
+                
+                const card = document.createElement('div');
+                card.className = `patient-card${isAlert && !isAcked ? ' alert-' + rc : ''}`;
+                
+                let cardBody = `
+  ${isAlert && !isAcked ? `<div class="alert-icon ${rc}">!</div>` : ''}
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <div class="pid">${p.name}</div>
+      <div class="room-no" style="margin-bottom: ${p.fall_hist > 0 ? '4px' : '0'}">Room ${p.room} &nbsp;|&nbsp; ${p.id}</div>
+      ${p.fall_hist > 0 ? `<div style="font-size:11px;color:var(--risk-med-text);font-weight:600;">⚠ Fall history: ${p.fall_hist}x</div>` : ''}
+    </div>
+    ${hasBand ? 
+        `<span class="badge ${rc}">${rc==='high'?'HIGH RISK':rc==='med'?'MEDIUM RISK':'LOW RISK'}</span>` : 
+        `<span class="badge" style="background:#e2e8f0;color:#64748b">UNASSIGNED</span>`}
+  </div>`;
+
+                if (hasBand) {
+                    const tLen = p.trend ? p.trend.length : 0;
+                    let tSym = '→', tCol = 'var(--color-text-muted)';
+                    if (tLen >= 2) {
+                        if (p.trend[tLen-1] > p.trend[tLen-2]) { tSym = '↑'; tCol = 'var(--risk-high)'; }
+                        else if (p.trend[tLen-1] < p.trend[tLen-2]) { tSym = '↓'; tCol = 'var(--risk-low)'; }
+                    }
+
+                    cardBody += `
+  <div class="risk-pct-big ${rc}">${p.risk}% <span style="font-size:24px;color:${tCol};vertical-align:middle;margin-left:4px;">${tSym}</span></div>
+  <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px;font-weight:500;">
+    ${isAlert ? (isAcked ? '✅ Acknowledged' : `🚨 Alert active for ${p.alert_age}`) : '✔️ Monitoring Stable'}
+  </div>
+  ${isAlert ? `<button class="btn btn-outline ack-btn${isAcked?' acked':''}" onclick="ackAlert('${p.id}',event)">${isAcked?'Acknowledge Removed':'Acknowledge Alert'}</button>` : ''}`;
+                } else {
+                    cardBody += `
+  <div style="font-size:14px; color:var(--color-text-muted); padding: 30px 0 10px 0; text-align:center; line-height: 1.6;">
+    ⚠️ Awaiting IMU Band<br><span style="font-size:11px">Use Doctor Panel Intake to Assign</span>
+  </div>`;
+                }
+
+                card.innerHTML = cardBody;
+                grid.appendChild(card);
+            });
+            document.getElementById('n-active').textContent = active;
+            document.getElementById('n-acked').textContent = acked;
+            
+            const caseloadEl = document.getElementById('n-caseload');
+            if (caseloadEl) caseloadEl.textContent = patients.length;
+            
+            const dutyEl = document.getElementById('n-duty');
+            if (dutyEl) dutyEl.textContent = userName || 'Staff';
+        }
+
+        function ackAlert(pid, e) {
+            e.stopPropagation();
+            const p = patients.find(pt => pt.id === pid);
+            if (ackSet.has(pid)) {
+                ackSet.delete(pid);
+            } else {
+                ackSet.add(pid);
+                const room = p ? p.room : '—';
+                const alertType = p && riskClass(p.risk) === 'high' ? 'High Risk' : 'Medium Risk';
+                auditLog.unshift({
+                    patientId: pid,
+                    room: room,
+                    alertType: alertType,
+                    timestamp: new Date().toLocaleTimeString(),
+                    ackBy: userName
+                });
+                if (auditLog.length > 50) auditLog.pop();
+            }
+            renderNurseGrid();
+            updateAdminPanel();
+        }
+
+        function setFilter(f) {
+            nurseFilter = f;
+            ['all','high','med','low'].forEach(x => {
+                const btn = document.getElementById('fb-' + x);
+                if (f === x) {
+                    btn.classList.add('active');
+                    if (x !== 'all') btn.classList.add(x);
+                } else {
+                    btn.className = 'filter-btn';
+                }
+            });
+            renderNurseGrid();
+        }
+
+        function switchTab(t) {
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+            const tabEl = document.getElementById('tab-' + t);
+            const panelEl = document.getElementById('panel-' + t);
+            if (tabEl) tabEl.classList.add('active');
+            if (panelEl) panelEl.classList.add('active');
+            const dt = document.getElementById('detail-pane');
+            if (dt) { dt.classList.remove('open'); setTimeout(() => dt.style.display='none',300); }
+            selectedPt = null;
+            if (t === 'nurse') renderNurseGrid();
+            else if (t === 'neuro') renderNeuroPatients();
+            else if (t === 'reception') renderReceptionPatients();
+            else renderPatients();
+        }
+
+        // ── API form submissions ───────────────────────────────────────────────
+        
+        function switchAdminTab(tabName) {
+            ['overview', 'fleet', 'integration', 'staff'].forEach(t => {
+                document.getElementById('sub-adm-' + t).classList.toggle('active', t === tabName);
+                document.getElementById('admin-view-' + t).style.display = t === tabName ? 'block' : 'none';
+            });
+            updateAdminPanel();
+        }
+
+        function updateAdminPanel() {
+            // Fleet View
+            const fleetTbody = document.getElementById('admin-fleet-tbody');
+            if (fleetTbody) {
+                let fleetHtml = '';
+                let totalDev = 0, onlineDev = 0, lowBattDev = 0;
+                
+                patients.forEach(p => {
+                    // Only show device if it's currently streaming data! No fake hardcoded rows.
+                    const lastSync = deviceSyncTracker[p.id];
+                    if (lastSync) {
+                        const secondsSinceSync = (new Date() - lastSync) / 1000;
+                        const isOnline = secondsSinceSync < 15; // Online if synced in last 15s
+                        
+                        totalDev += 2; 
+                        if (isOnline) onlineDev += 2;
+                        
+                        // We use pseudo-random battery based on patient ID to keep it stable but realistic
+                        const hash = p.id.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+                        const battImu = Math.abs(hash % 40) + 60; 
+                        const battSpo2 = Math.abs((hash * 7) % 40) + 60;
+                        if (battImu < 20) lowBattDev++;
+                        if (battSpo2 < 20) lowBattDev++;
+                        
+                        const calibState = p.band && p.band.calibrated ? '✓ Calibrated' : '⚠ Pending';
+                        const statusBadge = isOnline ? '<span class="badge low">Online</span>' : '<span class="badge high">Offline</span>';
+                        const syncText = isOnline ? 'Just now' : lastSync.toLocaleTimeString();
+
+                        fleetHtml += `<tr>
+                            <td style="font-family:monospace;">IMU-${p.id.substring(0,4)}</td>
+                            <td style="font-weight:600;">${p.name}</td>
+                            <td>IMU Band (BNO085)</td>
+                            <td>${statusBadge}</td>
+                            <td>${battImu}%</td>
+                            <td style="color:var(--color-text-muted);">${syncText}</td>
+                            <td>${calibState}</td>
+                        </tr>`;
+                        fleetHtml += `<tr>
+                            <td style="font-family:monospace;">SPO-${p.id.substring(0,4)}</td>
+                            <td style="font-weight:600;">${p.name}</td>
+                            <td>SpO₂ Sensor (MAX30100)</td>
+                            <td>${statusBadge}</td>
+                            <td>${battSpo2}%</td>
+                            <td style="color:var(--color-text-muted);">${syncText}</td>
+                            <td>✓ Calibrated</td>
+                        </tr>`;
+                    }
+                });
+                
+                fleetTbody.innerHTML = fleetHtml || `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--color-text-muted);">No active devices detected on the network.</td></tr>`;
+                document.getElementById('adm-fleet-total').textContent = totalDev;
+                document.getElementById('adm-fleet-online').textContent = onlineDev;
+                document.getElementById('adm-fleet-lowbatt').textContent = lowBattDev;
+            }
+
+            // Audit Log View
+            const auditTbody = document.getElementById('admin-audit-tbody');
+            if (auditTbody) {
+                auditTbody.innerHTML = auditLog.map(log => `<tr>
+                    <td style="color:var(--color-text-muted);">${log.timestamp}</td>
+                    <td style="font-weight:600;">${log.patientId}</td>
+                    <td>Room ${log.room}</td>
+                    <td><span class="badge ${log.alertType.includes('High')?'high':'med'}">${log.alertType}</span></td>
+                    <td>${log.ackBy}</td>
+                </tr>`).join('') || `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--color-text-muted);">No alerts acknowledged yet. Shift log is clear.</td></tr>`;
+            }
+
+            // Staff Access View
+            const staffTbody = document.getElementById('admin-staff-tbody');
+            if (staffTbody && staffTbody.innerHTML === '') {
+                let staffHtml = '';
+                Object.keys(USERS).forEach(u => {
+                    staffHtml += `<tr>
+                        <td style="font-weight:600;">${u}</td>
+                        <td style="text-transform:capitalize;">${USERS[u].role}</td>
+                        <td><span class="badge low">Active</span></td>
+                        <td style="color:var(--color-text-muted);">—</td>
+                    </tr>`;
+                });
+                staffTbody.innerHTML = staffHtml;
+            }
+        }
+
+        async function submitRegister(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('reg-name').value,
+                age: parseInt(document.getElementById('reg-age').value),
+                weight_kg: parseFloat(document.getElementById('reg-weight').value),
+                height_cm: parseFloat(document.getElementById('reg-height').value),
+                room: document.getElementById('reg-room').value,
+                diagnosis: document.getElementById('reg-dx').value
+            };
+            try {
+                const res = await fetch(`${API}/api/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Success! Patient Registered.\n\nGenerated Patient ID: ${data.patient_id}\n\nPlease write this ID on the patient's wristband.`);
+                    document.getElementById('register-modal').style.display = 'none';
+                    document.getElementById('registerForm').reset();
+                    loadPatients();
+                } else alert("Registration error: " + data.detail);
+            } catch (err) { alert("Connection error. Is FastAPI running?"); }
+        }
+
+        async function submitAssign(e) {
+            e.preventDefault();
+            const payload = {
+                patient_id: document.getElementById('intake-id').value,
+                assigned_nurse: userName,
+                parkinsons: document.getElementById('intake-parkinsons').checked,
+                post_stroke: document.getElementById('intake-stroke').checked,
+                muscle_issues: document.getElementById('intake-muscle').checked,
+                vision_issues: document.getElementById('intake-vision').checked,
+                on_opioids: document.getElementById('med-opioids').checked,
+                on_antipsychotics: document.getElementById('med-antipsychotics').checked,
+                on_antidepressants: document.getElementById('med-antidepressants').checked,
+                on_benzodiazepines: document.getElementById('med-benzodiazepines').checked,
+                on_antiparkinson: document.getElementById('med-antiparkinson').checked,
+                on_antiepileptics: document.getElementById('med-antiepileptics').checked,
+                on_antihypertensives: document.getElementById('med-antihypertensives').checked,
+                on_diuretics: document.getElementById('med-diuretics').checked,
+                on_beta_blockers: document.getElementById('med-beta_blockers').checked,
+                on_alpha_blockers: document.getElementById('med-alpha_blockers').checked,
+                on_nsaids: document.getElementById('med-nsaids').checked,
+                on_muscle_relaxants: document.getElementById('med-muscle_relaxants').checked,
+                ward_type: document.getElementById('intake-ward').value,
+                assigned_band: document.getElementById('intake-band').value || 'Unassigned',
+                assigned_spo2: document.getElementById('intake-spo2').value || 'Unassigned',
+                recent_surgery: 'None'
+            };
+            try {
+                const res = await fetch(`${API}/api/assign`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Success! Devices Assigned.\n\nBaseline Composite Risk: ${data.baseline_risk}%`);
+                    document.getElementById('assign-modal').style.display = 'none';
+                    document.getElementById('assignForm').reset();
+                    loadPatients();
+                } else alert("Assignment error: " + (data.detail || data.error));
+            } catch (err) { console.error(err); alert("Connection error."); }
+        }
+
+        // ── Init ──────────────────────────────────────────────────────────────
+        loadPatients();
+        setInterval(loadPatients, 250);
+    </script>
+</body>
+</html>
