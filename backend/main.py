@@ -25,6 +25,8 @@ from typing import List
 import google.generativeai as genai
 from database import engine, get_db, create_tables
 from models import PatientAssign, PatientRegister, SpO2Reading, BandReading, Patient
+from fastapi.responses import FileResponse
+
 import crud
 
 app = FastAPI()
@@ -1392,7 +1394,20 @@ def receive_band_data(reading: BandReading, db: Session = Depends(get_db)):
 def get_ward():
     return ward.get_ward_overview()
 
+from fastapi.responses import FileResponse
 
+
+frontend_dir = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "frontend"
+)
+
+@app.get("/", include_in_schema=False)
+def serve_frontend():
+    return FileResponse(
+        os.path.join(frontend_dir, "index.html")
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
